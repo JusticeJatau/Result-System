@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Build and output directories
+/dist/
+/build/
+/.next/
+/.nuxt/
+/.cache/
+/coverage/
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.*
+!.env.example
+.sites-runtime
+
+# Logs
+*.log
+logs/
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Miscellaneous
+*.local

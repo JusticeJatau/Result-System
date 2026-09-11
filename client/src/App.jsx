@@ -1,0 +1,5 @@
+import { Navigate, Route, Routes } from "react-router-dom";
+import { useAppStore } from "./store/useAppStore";
+import Login from "./pages/Login"; import Layout from "./components/Layout"; import Dashboard from "./pages/Dashboard"; import Directory from "./pages/Directory"; import Scores from "./pages/Scores"; import Results from "./pages/Results"; import Reports from "./pages/Reports"; import Settings from "./pages/Settings";
+function Protected(){return useAppStore(s=>s.user)?<Layout/>:<Navigate to="/login" replace/>}
+export default function App(){return <Routes><Route path="/login" element={<Login/>}/><Route path="/app" element={<Protected/>}><Route index element={<Dashboard/>}/><Route path="students" element={<Directory type="students"/>}/><Route path="teachers" element={<Directory type="teachers"/>}/><Route path="subjects" element={<Directory type="subjects"/>}/><Route path="scores" element={<Scores/>}/><Route path="results" element={<Results/>}/><Route path="reports" element={<Reports/>}/><Route path="settings" element={<Settings/>}/></Route><Route path="*" element={<Navigate to="/app" replace/>}/></Routes>}
