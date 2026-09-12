@@ -1,9 +1,9 @@
 export const students = [
-  { _id: "1", admissionNo: "BFA/001", fullName: "Ibrahim Yusuf", gender: "Male", className: "JSS 1A" },
-  { _id: "2", admissionNo: "BFA/002", fullName: "Aisha Bello", gender: "Female", className: "JSS 1A" },
-  { _id: "3", admissionNo: "BFA/003", fullName: "David Musa", gender: "Male", className: "JSS 1A" },
-  { _id: "4", admissionNo: "BFA/004", fullName: "Maryam Sani", gender: "Female", className: "JSS 1A" },
-  { _id: "5", admissionNo: "BFA/005", fullName: "Usman Ali", gender: "Male", className: "JSS 1A" }
+  { _id: "1", admissionNo: "SAA/001", fullName: "Ibrahim Yusuf", gender: "Male", className: "JSS 1A" },
+  { _id: "2", admissionNo: "SAA/002", fullName: "Aisha Bello", gender: "Female", className: "JSS 1A" },
+  { _id: "3", admissionNo: "SAA/003", fullName: "David Musa", gender: "Male", className: "JSS 1A" },
+  { _id: "4", admissionNo: "SAA/004", fullName: "Maryam Sani", gender: "Female", className: "JSS 1A" },
+  { _id: "5", admissionNo: "SAA/005", fullName: "Usman Ali", gender: "Male", className: "JSS 1A" }
 ];
 export const teachers = [
   { _id: "t1", name: "Mr. Musa Ibrahim", email: "musa@brightfuture.edu", role: "teacher", subject: "Mathematics" },

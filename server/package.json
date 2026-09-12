@@ -1,9 +1,21 @@
 {
   "name": "eduresult-server",
   "type": "module",
-  "scripts": { "dev": "node --watch index.js", "start": "node index.js", "seed": "node seed.js" },
+  "scripts": {
+    "dev": "node --watch index.js",
+    "start": "node index.js",
+    "seed": "node seed.js",
+    "seed:school-data": "node seedSchoolData.js",
+    "create:school": "node createSchool.js",
+    "seed:platform-admin": "node seedPlatformAdmin.js"
+  },
   "dependencies": {
-    "bcryptjs": "^3.0.2", "cors": "^2.8.5", "dotenv": "^16.5.0", "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.2", "mongoose": "^8.15.1", "morgan": "^1.10.0"
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.15.1",
+    "morgan": "^1.10.0"
   }
 }
