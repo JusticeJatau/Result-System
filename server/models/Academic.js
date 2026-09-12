@@ -18,7 +18,7 @@ const assignmentSchema = new mongoose.Schema({
   className: { type: String, required: true }, subject: { type: mongoose.Schema.Types.ObjectId, ref: "Subject", required: true },
   isFormMaster: { type: Boolean, default: false }
 }, { timestamps: true });
-assignmentSchema.index({ school: 1, teacher: 1, className: 1, subject: 1 }, { unique: true });
+assignmentSchema.index({ school: 1, className: 1, subject: 1 }, { unique: true });
 
 const classSchema = new mongoose.Schema({
   school: { type: mongoose.Schema.Types.ObjectId, ref: "School", required: true, index: true },

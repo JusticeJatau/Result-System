@@ -10,8 +10,8 @@ const router = express.Router();
 router.use(protect);
 const validId = value => mongoose.Types.ObjectId.isValid(value);
 
-async function canManage(user, className, subject) {
-  if (user.role === "admin") return true;
+async function hasTeachingAssignment(user, className, subject) {
+  if (user.role !== "teacher") return false;
   if (!validId(subject)) return false;
   return Boolean(await Assignment.exists({ school: user.school, teacher: user.id, className, subject }));
 }
@@ -19,7 +19,7 @@ async function canManage(user, className, subject) {
 router.get("/sheet", async (req, res) => {
   const { className, subject, session, term } = req.query;
   if (!className || !validId(subject) || !session || !term) return res.status(400).json({ message: "Select a valid class, subject and period" });
-  if (!(await canManage(req.user, className, subject))) return res.status(403).json({ message: "This class and subject are not assigned to you" });
+  if (!(await hasTeachingAssignment(req.user, className, subject))) return res.status(403).json({ message: "Score entry is available only to the teacher assigned to this class and subject" });
   const [students, scores] = await Promise.all([
     Student.find({ school: req.user.school, className, active: true }).sort({ fullName: 1 }),
     Score.find({ school: req.user.school, className, subject, session, term })
@@ -31,11 +31,9 @@ router.get("/sheet", async (req, res) => {
 router.post("/save", async (req, res) => {
   const { className, subject, session, term, scores = [] } = req.body;
   if (!className || !validId(subject) || !session || !term || !Array.isArray(scores)) return res.status(400).json({ message: "The score sheet information is incomplete" });
-  if (!(await canManage(req.user, className, subject))) return res.status(403).json({ message: "You cannot manage this class or subject" });
-  if (req.user.role !== "admin") {
-    const period = await AcademicPeriod.findOne({ school: req.user.school, session, term });
-    if (!period?.scoreEntryOpen || (period.deadline && new Date(period.deadline) < new Date())) return res.status(403).json({ message: "Score entry is closed for this academic period" });
-  }
+  if (!(await hasTeachingAssignment(req.user, className, subject))) return res.status(403).json({ message: "Score entry is available only to the teacher assigned to this class and subject" });
+  const period = await AcademicPeriod.findOne({ school: req.user.school, session, term });
+  if (!period?.scoreEntryOpen || (period.deadline && new Date(period.deadline) < new Date())) return res.status(403).json({ message: "Score entry is closed for this academic period" });
   const [school, subjectRecord, classStudents, existing] = await Promise.all([
     School.findById(req.user.school), Subject.findOne({ _id: subject, school: req.user.school }),
     Student.find({ school: req.user.school, className, active: true }).select("_id"),
@@ -49,7 +47,7 @@ router.post("/save", async (req, res) => {
   const operations = [];
   for (const item of scores) {
     if (!validId(item.student) || !studentIds.has(String(item.student))) return res.status(400).json({ message: "A student does not belong to the selected class" });
-    if (req.user.role !== "admin" && lockedStudents.has(String(item.student))) return res.status(403).json({ message: "This score sheet is locked. Ask an Admin to reopen it" });
+    if (lockedStudents.has(String(item.student))) return res.status(403).json({ message: "This score sheet is locked. Ask an Admin to reopen it" });
     const components = {};
     for (const [name, raw] of Object.entries(item.components || {})) {
       if (!Object.hasOwn(maxByName, name)) return res.status(400).json({ message: `${name} is not a configured assessment component` });
@@ -72,7 +70,7 @@ router.patch("/status", async (req, res) => {
   const status = String(req.body.status || "").toLowerCase();
   if (!["draft", "submitted", "reviewed", "finalized"].includes(status)) return res.status(400).json({ message: "Invalid result status" });
   if (req.user.role !== "admin") {
-    if (status === "submitted" && !(await canManage(req.user, className, subject))) return res.status(403).json({ message: "This score sheet is not assigned to you" });
+    if (status === "submitted" && !(await hasTeachingAssignment(req.user, className, subject))) return res.status(403).json({ message: "This score sheet is not assigned to you" });
     if (status === "reviewed" && !(await ClassRoom.exists({ school: req.user.school, name: className, formMaster: req.user.id, active: true }))) return res.status(403).json({ message: "You are not the Form Master of this class" });
     if (!["submitted", "reviewed"].includes(status)) return res.status(403).json({ message: "This workflow action is not permitted" });
   }

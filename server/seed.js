@@ -13,7 +13,7 @@ const school = await School.create({ name: "Shammer Ambassadors Academy", code: 
 const [admin, teacher, formMaster] = await User.create([
   { school: school._id, name: "Amina Yusuf", email: "admin@brightfuture.edu", password: await bcrypt.hash("password123", 10), role: "admin" },
   { school: school._id, name: "Musa Ibrahim", email: "teacher@brightfuture.edu", password: await bcrypt.hash("password123", 10), role: "teacher" },
-  { school: school._id, name: "Grace David", email: "formmaster@brightfuture.edu", password: await bcrypt.hash("password123", 10), role: "form_master" }
+  { school: school._id, name: "Grace David", email: "formmaster@brightfuture.edu", password: await bcrypt.hash("password123", 10), role: "teacher" }
 ]);
 await Student.insertMany([
   { school: school._id, admissionNo: "SAA/001", fullName: "Ibrahim Yusuf", gender: "Male", className: "JSS 1A", session: "2026/2027" },
@@ -25,7 +25,7 @@ await ClassRoom.create({ school: school._id, name: "JSS 1A", level: "JSS 1", arm
 await AcademicPeriod.create({ school: school._id, session: "2026/2027", term: "First Term", scoreEntryOpen: true, active: true });
 await Assignment.insertMany([
   { school: school._id, teacher: teacher._id, className: "JSS 1A", subject: maths._id },
-  { school: school._id, teacher: formMaster._id, className: "JSS 1A", subject: english._id, isFormMaster: true },
+  { school: school._id, teacher: formMaster._id, className: "JSS 1A", subject: english._id, isFormMaster: false },
   { school: school._id, teacher: teacher._id, className: "JSS 1A", subject: science._id }
 ]);
 console.log("Seed complete. Password for all accounts: password123"); console.log("Admin: admin@brightfuture.edu"); console.log("Teacher: teacher@brightfuture.edu"); console.log("Form Master: formmaster@brightfuture.edu"); process.exit();

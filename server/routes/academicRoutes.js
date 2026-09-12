@@ -51,9 +51,14 @@ for (const { path, Model } of modelRoutes) {
   });
 }
 router.get("/teachers", allow("admin"), async (req, res) => res.json(await User.find({ school: req.user.school }).select("-password")));
-router.post("/teachers", allow("admin"), async (req, res) => res.status(201).json(await User.create({ ...req.body, school: req.user.school, password: await bcrypt.hash(req.body.password, 10) })));
+router.post("/teachers", allow("admin"), async (req, res) => {
+  const { name, email, password, active = true } = req.body;
+  if (!name?.trim() || !email?.trim() || !password) return res.status(400).json({ message: "Teacher name, email and password are required" });
+  const teacher = await User.create({ name: name.trim(), email: email.trim().toLowerCase(), active, role: "teacher", school: req.user.school, password: await bcrypt.hash(password, 10) });
+  res.status(201).json(teacher);
+});
 router.patch("/teachers/:id/reset-password", allow("admin"), async (req, res) => {
-  const teacher = await User.findOne({ _id: req.params.id, school: req.user.school, role: { $in: ["teacher", "form_master"] } }).select("+password");
+  const teacher = await User.findOne({ _id: req.params.id, school: req.user.school, role: "teacher" }).select("+password");
   if (!teacher) return res.status(404).json({ message: "Teacher account not found" });
   const temporaryPassword = `SAA-${crypto.randomBytes(5).toString("base64url")}!`;
   teacher.password = await bcrypt.hash(temporaryPassword, 10);
@@ -67,23 +72,46 @@ router.get("/assignments", async (req, res) => {
   res.json(await Assignment.find(filter).populate("teacher subject"));
 });
 router.post("/assignments", allow("admin"), async (req, res) => {
-  const assignment = await Assignment.create({ ...req.body, school: req.user.school });
-  if (req.body.isFormMaster) {
-    await Assignment.updateMany({ school: req.user.school, className: req.body.className, _id: { $ne: assignment._id } }, { isFormMaster: false });
-    await ClassRoom.findOneAndUpdate({ school: req.user.school, name: req.body.className }, { formMaster: req.body.teacher });
-  }
+  const { teacher, className, subject } = req.body;
+  if (!teacher || !className?.trim() || !subject) return res.status(400).json({ message: "Teacher, class and subject are required" });
+  const normalizedClass = className.trim();
+  const [teacherRecord, classRecord, subjectRecord] = await Promise.all([
+    User.findOne({ _id: teacher, school: req.user.school, role: "teacher", active: true }),
+    ClassRoom.findOne({ school: req.user.school, name: normalizedClass, active: true }),
+    Subject.findOne({ _id: subject, school: req.user.school })
+  ]);
+  if (!teacherRecord) return res.status(400).json({ message: "Select an active teacher from this school" });
+  if (!classRecord) return res.status(400).json({ message: "Select an active class from this school" });
+  if (!subjectRecord) return res.status(400).json({ message: "Select a subject from this school" });
+
+  const duplicate = await Assignment.findOne({ school: req.user.school, className: normalizedClass, subject }).populate("teacher", "name");
+  if (duplicate) return res.status(409).json({ message: `${subjectRecord.name} in ${normalizedClass} is already assigned to ${duplicate.teacher?.name || "another teacher"}` });
+
+  const assignment = await Assignment.create({ teacher, className: normalizedClass, subject, school: req.user.school, isFormMaster: false });
+  await AuditLog.create({ school: req.user.school, user: req.user.id, action: "assignment.created", entity: assignment.id, details: { teacher: teacherRecord.name, className: normalizedClass, subject: subjectRecord.name } });
   res.status(201).json(await assignment.populate("teacher subject"));
 });
 router.delete("/assignments/:id", allow("admin"), async (req, res) => {
   const item = await Assignment.findOneAndDelete({ _id: req.params.id, school: req.user.school });
   if (!item) return res.status(404).json({ message: "Assignment not found" });
-  if (item.isFormMaster) await ClassRoom.findOneAndUpdate({ school: req.user.school, name: item.className, formMaster: item.teacher }, { $unset: { formMaster: 1 } });
   res.json({ message: "Assignment removed" });
 });
 router.get("/classes", async (req, res) => {
   const filter = { school: req.user.school, active: { $ne: false } };
   if (req.user.role !== "admin") filter.name = { $in: await teacherClasses(req.user) };
-  res.json(await ClassRoom.find(filter).sort({ name: 1 }));
+  res.json(await ClassRoom.find(filter).populate("formMaster", "name email").sort({ name: 1 }));
+});
+router.patch("/classes/:id/form-master", allow("admin"), async (req, res) => {
+  const teacher = await User.findOne({ _id: req.body.teacher, school: req.user.school, role: "teacher", active: true });
+  if (!teacher) return res.status(400).json({ message: "Select an active teacher from this school" });
+  const classroom = await ClassRoom.findOneAndUpdate(
+    { _id: req.params.id, school: req.user.school, active: true },
+    { formMaster: teacher._id },
+    { new: true, runValidators: true }
+  ).populate("formMaster", "name email");
+  if (!classroom) return res.status(404).json({ message: "Class not found" });
+  await AuditLog.create({ school: req.user.school, user: req.user.id, action: "class.form_master_assigned", entity: classroom.id, details: { className: classroom.name, teacher: teacher.name } });
+  res.json(classroom);
 });
 router.get("/form-master-classes", async (req, res) => {
   const filter = { school: req.user.school, active: true };
@@ -109,7 +137,7 @@ router.get("/dashboard", async (req, res) => {
   const classNames = [...new Set(assignments.map(item => item.className))];
   const studentFilter = { school: req.user.school, active: true, ...(req.user.role !== "admin" && { className: { $in: classNames } }) };
   const [students, teachers, subjects, classes, activities] = await Promise.all([
-    Student.countDocuments(studentFilter), User.countDocuments({ school: req.user.school, active: true, role: { $in: ["teacher", "form_master"] } }),
+    Student.countDocuments(studentFilter), User.countDocuments({ school: req.user.school, active: true, role: "teacher" }),
     req.user.role === "admin" ? Subject.countDocuments({ school: req.user.school }) : Promise.resolve(new Set(assignments.map(item => item.subject?._id?.toString())).size),
     req.user.role === "admin" ? ClassRoom.countDocuments({ school: req.user.school, active: true }) : Promise.resolve(classNames.length),
     AuditLog.find({ school: req.user.school, ...(req.user.role !== "admin" && { user: req.user.id }) }).populate("user", "name").sort({ createdAt: -1 }).limit(5)

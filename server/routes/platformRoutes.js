@@ -34,7 +34,7 @@ router.get("/schools", async (_req, res) => {
   const rows = await Promise.all(schools.map(async school => {
     const [admins, teachers, students] = await Promise.all([
       User.countDocuments({ school: school._id, role: "admin", active: true }),
-      User.countDocuments({ school: school._id, role: { $in: ["teacher", "form_master"] }, active: true }),
+      User.countDocuments({ school: school._id, role: "teacher", active: true }),
       Student.countDocuments({ school: school._id, active: true })
     ]);
     return { ...school, status: school.status || "active", plan: school.plan || "starter", billingCycle: school.billingCycle || "monthly", price: school.price || 0, admins, teachers, students };
